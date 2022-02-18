@@ -1,4 +1,5 @@
-#Chapter 01. 도커 기초
+# Chapter 01. 도커 기초
+
 ## 1.1 도커 소개
 도커(Docker) : 가상실행 환경을 제공해주는 오픈소스 플랫폼 (컨테이너, Container) 
 - 어디서든 실행할 수 있는 장점
@@ -415,7 +416,41 @@ docker images
 - 원하는 소프트웨어 및 라이브러리를 설치하기 위한 명령을 기술
 - 컨테이너 실행 시 수행할 명령을 기술하는 것
 
+### 1.4.1 Dockerfile 기초
 
+```python
+# hello.py
+import os
+import sys
+
+my_ver = os.environ["my_ver"]
+arg = sys.argv[1]
+
+print("hello %s, my version is %s!" % (arg, my_ver))
+```
+```bash
+# Dockerfile
+FROM ubuntu:20.04
+
+RUN apt-get update \
+    && apt-get install -y \
+      curl \
+      python-dev
+
+WORKDIR /root
+COPY hello.py .
+ENV my_ver 1.0
+
+CMD ["python", "hello.py", "guest"]
+```
+- FROM : 기반 이미지(base image)를 나타냄. 해당 이미지를 기반으로 새로운 도커 이미지 생성
+- RUN : 사용자가 지정한 명령을 실행하는 지시자
+- WORKDIR : 이미지의 작업 폴더(working directory)를 지정, 예제에서는 /root 디렉터리 이용
+- COPY : 로컬 호스트에 존재하는 파일을 이미지 안으로 복사하는 지시자
+- ENV : 이미지의 환경변수를 지정
+- CMD : 이미지 실행 시, default로 실행되는 명령을 지정
+
+### 1.4.2 도커 빌드
 
 
 
