@@ -451,7 +451,280 @@ CMD ["python", "hello.py", "guest"]
 - CMD : 이미지 실행 시, default로 실행되는 명령을 지정
 
 ### 1.4.2 도커 빌드
+```bash
+docker build <PATH> -t <IMAGE_NAME>:<TAG>
+```
+작성한 Dockerfile을 도커 이미지로 변환하기 위해 빌드 명령을 수행
 
+```bash
+# 현재 디렉토리에 위치한 Dockerfile을 이용하여 hello:1 이미지를 생성하라
+docker build . -t hello:1
+# Sending build context to Docker daemon   21.5kB
+# Step 1/6 : FROM ubuntu:20.04
+#  ---> 8e4ce0a6ce69
+# Step 2/6 : RUN apt-get update && apt-get install -y curl
+#  ---> Running in 2d62d9ed92f
+# ...
 
+docker run hello:1
+# hello guest, my version is 1.0!
+
+# 파라미터를 넘기게 되면 기존 `CMD`는 override 됩니다.
+# echo
+docker run hello:1 echo "hello world!"
+# hello world!
+
+# cat
+docker run hello:1 cat hello.py
+# import os
+# import sys
+# ...
+
+# pwd
+docker run hello:1 pwd
+# /root
+```
+
+컨테이너 실행 시, -e 옵션으로 환경변수를 주입할 수 있음
+```bash
+docker run -e KEY=VALUE <REGISTRY>/<IMAGE>:<TAG>
+```
+my_ver 환경 변수를 1.5로 수정하여 실행
+```bash
+docker run -e my_ver=1.5 hello:1
+# hello guest, my version is 1.5!
+```
+
+### 1.4.3 Dockerfile 심화
+#### ARG
+Dockerfile 안에서 사용할 수 있는 매개변수 정의
+```bash
+# Dockerfile
+FROM ubuntu:18.04
+
+RUN apt-get update \
+    && apt-get install -y \
+      curl \
+      python-dev
+
+ARG my_ver=1.0
+
+WORKDIR /root
+COPY hello.py .
+ENV my_ver $my_ver
+
+CMD ["python", "hello.py", "guest"]
+```
+ARG 지시자를 이용하여 my_ver이라는 변수를 생성, 이미지 발드 시 --build-arg 옵션을 이용하여 ARG 값을 덮어 씌움
+```bash
+docker build . -t hello:2 --build-arg my_ver=2.0
+
+docker run hello:2
+# hello guest, my version is 2.0!
+```
+```bash
+docker run -e my_ver=2.5 hello:2
+# hello guest, my version is 2.5!
+```
+
+#### ENTRYPOINT
+CMD와 유사하나 실행 명령이 overrid 되지 않고 실행 가능한 이미지를 만듬
+```bash
+# Dockerfile
+FROM ubuntu:18.04
+
+RUN apt-get update \
+    && apt-get install -y \
+      curl \
+      python-dev
+
+WORKDIR /root
+COPY hello.py .
+ENV my_ver 1.0
+
+ENTRYPOINT ["python", "hello.py", "guest"]
+```
+기존 CMD에서 ENTRYPOINT로 지시자를 변경
+```bash
+docker build . -t hello:3
+
+docker run hello:3
+# hello guest, my version is 1.0!
+
+# 실행명령을 전달해도 ENTRYPOINT 그대로 실행됩니다.
+docker run hello:3 echo "hello"
+# hello guest, my version is 1.0!
+```
+echo "hello" 명령을 파라미터로 전달하더라도 실행 멸령이 override 되지 않음
+
+```bash
+# Dockerfile
+FROM ubuntu:18.04
+
+RUN apt-get update \
+    && apt-get install -y \
+      curl \
+      python-dev
+
+WORKDIR /root
+COPY hello.py .
+ENV my_ver 1.0
+
+# guest를 삭제합니다. hello.py가 새로운 파라미터를 받을 수 있게 만듭니다.
+ENTRYPOINT ["python", "hello.py"]
+```
+hello:4로 새로 이미지를 빌드
+```bash
+docker build . -t hello:4
+
+# new-guest 파라미터를 전달합니다.
+docker run hello:4 new-guest
+# hello new-guest, my version is 1.0!
+```
+
+hello:4 이미지로 전달된 파라미터 (new-guest)가 실행 명령으로 override되지 않고 그대로 python hello.py의 파라미터로 전달되는 것을 확인
+
+마치 python hello.py new-guest가 호출되는 것처럼 동작
+
+#### CMD와 ENTRYPOINT 차이점
+CMD는 쉽게 이해하자면, default command라고 생각하면 된다. 사용자가 이미지를 실행할 때 별다른 명령을 파라미터로 넘겨주지 않으면 default로 실행되는 명령이고 언제든지 override 할 수 있다.
+
+ENTRYPOINT는 이미지 실행 가능한 바이너리로 만들어주는 지시자, 이미지 실행 시 무조건 호출되고 파라미터를 전달하게 되면 해당 파라미터가 그대로 ENTRYPOINT의 파라미터로 전달된다.
 
 ## 1.5 도커 실행 고급
+
+### 1.5.1 Network
+```bash
+docker run -p <HOST_PORT>:<CONTAINER_PORT> <IMAGE_NAME>
+```
+외부의 트래픽을 컨테이너 내부로 전달하기 위해서 로컬 호스트 서버와 컨테이너의 포트를 매핑시켜 트래픽을 포워딩
+(포트 포워딩) 다음 예제는 호스트의 5000번 포트를 컨테이너의 80포트와 매핑하는 명령
+```bash
+docker run -p 5000:80 -d nginx
+# rlasdf0234klcvmz904390zxhvksdf230zxc
+
+# 5000번으로 localhost 호출을 합니다.
+curl localhost:5000
+# <!DOCTYPE html>
+# <html>
+# <head>
+# <title>Welcome to nginx!</title>
+# ...
+
+# 내부/공인IP로도 확인해 봅니다.
+curl <내부 혹은 공인IP>:5000
+# <!DOCTYPE html>
+# <html>
+# <head>
+# <title>Welcome to nginx!</title>
+# ...
+```
+
+내부/공인 IP를 이용하여 직접 웹 브라우저에 입력
+```commandline
+웹 브라우저 ULR: <내부 IP/공인 IP>:5000
+```
+내부 IP 확인법 : hostname -i 또는 ifconfig
+
+외부 IP 확인법 : curl ifconfig.com
+
+### 1.5.2 Volume
+```bash
+docker run -v <HOST_DIR>:<CONTAINER_DIR> <IMAGE_NAME>
+```
+컨테이너는 휘발성 프로세스, 데이터를 지속적으로 보관하기 위해 볼륨을 사용
+
+컨테이너 실행 시, 로컬 호스트의 파일 시스템을 컨테이너와 연결하여 필요한 데이터를 로컬 호스트에 저장(볼륨 마운트)
+
+```bash
+# 현재 디렉토리를 컨테이너의 nginx 디렉토리와 연결합니다.
+docker run -p 6000:80 -v $(pwd):/usr/share/nginx/html/ -d nginx
+
+# 현재 디렉토리에 hello.txt 파일을 생성합니다.
+echo hello! >> $(pwd)/hello.txt
+
+# nginx 내부에서 해당 파일이 보이는지 확인합니다.
+curl localhost:6000/hello.txt
+# hello!
+```
+변경사항이 많은 파일의 경우, 컨테이너 내부에 파일을 두지 않고 호스트 서버의 디렉터리를 여녁ㄹ하여 호스트 서버에서 조금 더 쉽게 파일을 수정
+
+볼륨을 이용하면 컨테이너 종료 시 저장된 데이터가 유실되지 않고 유지되는 장점
+
+### 1.5.3 Enrtrypoint
+ENTRYPOINT는 파라미터 전달 시, override되지 않지만
+
+--entrypoint라는 옵션으로 ENTRYPOINT를 강제로 override 하는 방법
+```bash
+# Dockerfile
+FROM ubuntu:18.04
+
+ENTRYPOINT ["echo"]
+```
+
+```bash
+docker build . -t lets-echo
+
+docker run lets-echo hello
+# hello
+
+# cat의 결과가 출력되는 것을 기대하나 cat '/etc/passwd' 라는 문자열이 출력됨
+docker run lets-echo cat /etc/password
+# cat /etc/password
+
+# entrypoint를 cat 명령으로 override
+docker run --entrypoint=cat lets-echo /etc/passwd
+# root:x:0:0:root:/root:/bin/bash
+# daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+# bin:x:2:2:bin:/bin:/usr/sbin/nologin
+# ...
+```
+
+### 1.5.4 User
+기본적으로 컨테이너의 유저는 root
+
+하지만 보안상 이유로 root가 아닌 일반 유저를 사용하도록 만들 수 있음
+
+```bash
+# Dockerfile
+FROM ubuntu:18.04
+
+# Ubuntu 유저 생성
+RUN adduser --disabled-password --gecos "" ubuntu
+
+# 컨테이너 실행 시 ubuntu 유저로 설정
+USER ubuntu
+```
+
+```bash
+# my-user 라는 이미지 생성
+docker build . -t my-user
+
+# ubuntu라는 유저로 컨테이너 실행
+docker run -it my-user bash
+ubuntu@b09ce82d4a77:/$
+
+ubuntu@b09ce82d4a77:/$ apt update
+# Reading package lists... Done
+# E: List directory /var/lib/apt/lists/partial is missing.
+# - Acquire (13: Permission denied)
+
+ubuntu@b09ce82d4a77:/$ exit
+
+# 강제로 root 유저 사용
+docker run --user root -it my-user bash
+root@0ac2522215e8:/$ apt update
+# Get:1 http://security.ubuntu.com/ubuntu bionic-security InRelease
+# Get:2 http://archive.ubuntu.com/ubuntu bionic InRelease [242 kB]
+# ...
+
+root@0ac2522215e8:/$ exit
+```
+
+## 1.6 마치며
+
+#### Clean Up
+```bash
+docker rm $(docker ps -aq) -f
+docker rmi $(docker images -q) -f
+```
