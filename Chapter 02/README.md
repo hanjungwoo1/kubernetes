@@ -60,6 +60,43 @@
 컨트롤러는 control-loop라는 루프를 돌며 특정 리소스를 지속적으로 모니터링하다가, 사용자가 생성한 리소스의 이벤트에 따라 사전에 정의된 작업을 수행
 
 Job라는 리소스를 사용자가 생성하면(바라는 상태) 그에 맞는 배치 작업 프로세스를 실행(특정 작업 수행)
+
+### 2.2.4 쿠버네티스 리소스(Resource)
+쿠버네티스는 모든 것이 리소스(Resource)로 표현됩니다. Pod, ReplicaSet, Deployment 등 쿠버네티스에는 다양한 리소스가 존재하고 각각의 역할. 리소스마다 세부 정의가
+다르고 그에 따른 역할과 동작 방식이 다르지만 모두 리소스로 표현.
+가장 기본적인 리소스는 Pod, 하나 이상의 컨테이너를 가지는 쿠버네티스의 최소 실행 단위
+
+### 2.2.5 선언형 커맨드(Declarative Command)
+선언형 커맨드 지향, 사용자가 직접 시스템의 상태를 바꾸지 않고 사용자가 바라는 상태를 선언적으로 기술하여 명령을 내리는 방법(HTML)
+
+명령형 커맨드, 일반적으로 자주 사용하는 명령형(SQL)
+
+쿠버네티스에서는 YAML 형식을 이용하여 선언형 명령, 'YAML 정의서'
+```yaml
+api version: v1
+kind: pod
+metadata:
+  name: mypod
+spec:
+  containers:
+    - image : nginx
+      name: nginx
+```
+최소한의 필수값을 채워서 리소스를 생성하면, 나머지는 쿠버네티스가 기본값으로 리소스를 생성
+
+### 2.2.6 네임스페이스(Namespace)
+쿠버네티스에는 클러스터를 논리적으로 분리하는 네임스페이스라는 개념
+
+물리적으로는 하나의 쿠버네티스 클러스터 위에서 논리적으로 서로 다른 네임 스페이스로 클러스터 환경 나눔
+
+네임스페이스마다 서로 다른 권한 설정을 할 수 있으며, 네트워크 정책 등을 설정
+
+네임스페이스 레벨 리소스(Pod, Deployment, Service) / 클러스터 레벨 리소스(Node, PersistentVolume, StorageClass)
+
+
+### 2.2.7 라벨 & 셀렉터(Label & Selector)
+
+
 ## 2.3 아키텍처
 
 ## 2.4 장점
@@ -107,135 +144,3 @@ sudo usermod -aG docker $USER
 # 서버를 재시작
 sudo reboot
 ```
-
-## 1.2 도커 기본 명령
-도커 컨테이너를 하나 실행한다는 것은 일반적인 프로세스 한 개를 실행하는 것과 마찬가지
-
-### 1.2.1 컨테이너 실행
-```bash
-docker run <IMAGE>:<TAG> [<args>]
-```
-일반적인 리눅스에서 cowsay 실행
-```bash
-sudo apt install -y cowsay
-cowsay hello world!
-#  ______________
-# < hello world! >
-#  --------------
-#         \   ^__^
-#          \  (oo)\_______
-#             (__)\       )\/\
-#                 ||----w |
-#                 ||     ||
-# 
-```
-도커 컨테이너 버전의 cowsay
-```bash
-docker run docker/whalesay cowsay 'hello world!'
-# Unable to find image 'docker/whalesay:latest' locally
-# latest: Pulling from docker/whalesay
-# 23cwc732thk4: Pull complete
-# t4nb4f93jc42: Pull complete
-# ...
-#  ______________
-# < hello world! >
-#  --------------
-#     \
-#      \
-#       \
-#                     ##        .
-#               ## ## ##       ==
-#            ## ## ## ##      ===
-#        /""""""""""""""""___/ ===
-#   ~~~ {~~ ~~~~ ~~~ ~~~~ ~~ ~ /  ===- ~~~
-#        \______ o          __/
-#         \    \        __/
-#           \____\______/
-```
-- 기본 레지스트리 주소 : docker.io
-- 기본 사용 TAG : latest
-
-```bash
-<레지스트리 이름> / <이미지 이름> : <TAG>
-docker/whalesay == docker.io/docker/whalesay:latest
-```
-docker/whalesay 이미지에 다른 파라미터를 전달
-```bash
-docker run docker/whalesay echo hello
-# hello
-```
--d 옵션으로 컨테이너를 백그라운드 실행, 사용할 도커 이미지는 (nginx)
-```bash
-# '-d' {.bash} 옵션 추가
-docker run -d nginx
-# Unable to find image 'nginx:latest' locally
-# latest: Pulling from library/nginx
-# 5e6ec7f28fb7: Pull complete
-# ab804f9bbcbe: Pull complete
-# ...
-# d7455a395f1a4745974b0be1372ea58c1499f52f97d96b48f92eb8fa765bc69f
-```
-nginx 이미지의 전체 주소
-```bash
-nginx == docker.io/nginx:latest
-```
-
-### 1.2.2 컨테이너 조회
-```bash
-docker ps
-# 실행한 컨테이너에 대해서 조회
-```
-
-### 1.2.3 컨테이너 상세 정보 확인
-```bash
-# docker ps를 통해 얻은 <CONTAINER_ID>로 상세 정보 확인
-docker inspect d7455a395f1a
-# [
-#   {
-#     "Id": "d7455a395f1a0f562af7a0878397953331b791c229a31b7eba0",
-#     "Created": "2020-07-12T05:26:23.554118194Z",
-#     "Path": "/",
-#     "Args": [
-#     ],
-#     "State": {
-#       "Status": "running",
-#       "Running": true,
-#       "Paused": false,
-#       ...
-```
-
-### 1.2.4 컨테이너 로깅
-컨테이너에서 출력되는 로그 기록
-```bash
-docker logs <CONTAINER_ID>
-```
-백그라운드로 실행된 컨테이너의 로그를 직접 확인. -f는 follow output 옵션
-```bash
-docker logs -f d7455a395f1a
-# /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, ...
-# /docker-entrypoint.sh: Looking for shell scripts in ...
-# ...
-```
-CTR> + C 로 로깅을 종료
-
-### 1.2.5 
-간혹 실행된 컨테이너에 새로운 패키지를 설치하거나 설정을 수정해야 하는 경우
-```bash
-docker exec <CONTAINER_ID> <CMD>
-```
-exec 명령으로 nginx 컨테이너에 wget을 설치하고 localhost로 요청
-```bash
-# 새로운 패키지 설치
-docker exec d7455a395f1a sh -c 'apt update && apt install -y wget'
-docker exec d7455a395f1a wget localhost
-# ..
-# Saving to: 'index.html'
-#      0K .......... ..           166M=0s
-# 2020-07-16 15:15:43 (166 MB/s) - 'index.html' saved [13134]
-```
-### 1.2.6 컨테이너 / 호스트간 파일 복사
-실행한 컨테이너와 호스트서버간에 파일을 주고 받을 수 있음
-```bash
-docker cp <HOST_PATH> <CONTAINER_ID> : <CONTAINER_PATH>
-```
-호스트 서버의 /ect/password 파일을 컨테이너 내부의 /usr/share/nginx/html/ 위치로 복사
