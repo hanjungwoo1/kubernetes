@@ -60,6 +60,9 @@ spec:
 ### 6.1.4 Service 도메인 주소 법칙
 ### 6.1.5 클러스터 DNS 서버
 
+
+
+
 ## 6.2 Service 종류
 ### 6.2.1 ClusterIP
 ### 6.2.2 NodePort
