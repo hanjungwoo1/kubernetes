@@ -63,6 +63,10 @@ spec:
 
 
 
+
+
+
+
 ## 6.2 Service 종류
 ### 6.2.1 ClusterIP
 ### 6.2.2 NodePort
