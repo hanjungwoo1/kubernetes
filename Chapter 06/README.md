@@ -316,8 +316,103 @@ curl <공인IP>:30080
 ```
 
 ### 6.2.3 LoadBalancer
+노드 앞단에 로드밸런서를 두고 해당 로드 밸런서가 각 노드로 트래픽을 분산
+- 보안성을 높힐 수 있다 
+- 로드밸런서가 클러스터 앞단에 존재하면 사용자의 각각의 서버 IP를 직접 알 필요 없이 도메인으로만 보냄
+```yaml
+# load-bal.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: load-bal
+spec:
+  type: LoadBalancer  # 타입 LoadBalancer
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 80
+    nodePort: 30088   # 30088로 변경
+  selector:
+    run: load-bal
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: load-bal
+  name: load-bal
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    ports:
+    - containerPort: 80 
+```
+```bash
+kubectl apply -f load-bal.yaml
+# service/load-bal created
+# pod/load-bal created
+
+kubectl get svc load-bal
+# NAME         TYPE          CLUSTER-IP    EXTERNAL-IP    PORT(S)         
+# load-bal     LoadBalancer  10.43.230.45  10.0.1.1       8080:30088/TCP  
+```
+```bash
+# <로드밸런서IP>:<Service Port>로 호출합니다.
+curl 10.0.1.1:8080
+```
+```bash
+kubectl get pod
+# NAME                   READY   STATUS    RESTARTS   AGE
+# ...
+# svclb-load-bal-5n2z8   1/1     Running   0          4m
+# svclb-load-bal-svv8j   1/1     Running   0          4m
+```
 ### 6.2.4 ExternalName
+외부 DNS 주소에 클러스터 내부에서 사용할 새로운 별칭을 만듬
+```yaml
+# external.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: google-svc  # 별칭
+spec:
+  type: ExternalName
+  externalName: google.com  # 외부 DNS
+```
+```bash
+kubectl apply -f external.yaml
+# service/google-svc created
+
+kubectl run call-google --image curlimages/curl \
+              --  curl -s -H "Host: google.com" google-svc
+# pod/call-google created
+
+kubectl logs call-google
+# <HTML><HEAD><meta http-equiv="content-type" content="text/..">
+# <TITLE>301 Moved</TITLE></HEAD><BODY>
+# <H1>301 Moved</H1>
+# ...
+```
 
 ## 6.3 네트워크 모델
+특징
+- 각 Node간 NAT 없이 통신이 가능해야 함
+- 각 Pod간 NAT 없이 통신이 가능해야 함
+- Node와 Pod간 NAT 없이 통신이 가능 해야 함
+- 각 Pod는 고유한 IP를 부여
+- 각 Pod IP 네트워크 제공자를 통해 할당
+- Pod IP는 클러스터 내부 어디서든 접근이 가능해야 함
+
+장점
+- 모든 리소스(Node, Pod)가 다른 모든 리소스(Node, Pod, Service)를 고유의 IP로 접근
+- NAT 통신으로 인한 부작용에 대해 신경 쓸 필요가 없음
+- 새로운 프로토콜을 재정의할 필요 없이 기존 TCP, UDP, IP 프로토콜을 그대로 이용
+- Pod끼리의 네트워킹이 어느 노드에서든지 동일하게 동작합니다(호스트 서버와의 종속성이 없기 때문에 결과적으로 이식성이 높아짐)
 
 ## 6.4 마치며
+### Clean UP
+```bash
+kubectl delete svc --all
+kubectl delete pod --all
+```
